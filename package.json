@@ -1,0 +1,13 @@
+{
+  "name": "klaster-logistik-indonesia",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dashboard peta dan data Klaster Logistik Indonesia",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "vercel": "^41.6.0"
+  }
+}
