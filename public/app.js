@@ -2,7 +2,7 @@
  * Hubungkan spreadsheet: ganti SHEET_CSV_URL dengan URL CSV dari
  * Google Sheets > File > Share > Publish to web > DATA_KLASTER > CSV.
  */
-const SHEET_CSV_URL = "PASTE_PUBLISHED_GOOGLE_SHEET_CSV_URL_HERE";
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQxdBWgqO_x59nWirholtB3UxdY8I3dEaZbUYPkiwBxju46istFK2uIi82i3sTHxQ/pub?gid=79692961&single=true&output=csv";
 const GEOJSON_URLS = [
   "https://raw.githubusercontent.com/superpikar/indonesia-geojson/master/indonesia-prov.geojson",
   "https://raw.githubusercontent.com/ans-4175/Indonesia-Map-Leaflet/master/indonesia-province.json",
