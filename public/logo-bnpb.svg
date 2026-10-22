@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-labelledby="title desc">
+<title id="title">Logo BNPB</title><desc id="desc">Lambang Badan Nasional Penanggulangan Bencana Indonesia</desc>
+<rect width="180" height="180" fill="#ffffff"/>
+<circle cx="90" cy="90" r="77" fill="#ffffff" stroke="#1b5b9a" stroke-width="5"/>
+<path d="M90 23 L103 54 L136 40 L125 73 L157 88 L125 101 L138 134 L104 122 L90 155 L76 122 L43 135 L55 102 L23 88 L55 74 L42 41 L76 54 Z" fill="#f4c542" stroke="#1b5b9a" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="90" cy="88" r="35" fill="#1b5b9a"/>
+<path d="M61 91 Q75 75 90 91 T119 91" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+<path d="M68 104 Q82 88 96 104 T116 104" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+<path d="M90 54 L90 72" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+<text x="90" y="174" font-family="Arial,sans-serif" font-size="10" text-anchor="middle" fill="#1b5b9a" font-weight="700">BNPB</text>
+</svg>
