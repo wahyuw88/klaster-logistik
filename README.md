@@ -46,3 +46,4 @@ Dashboard menampilkan empat kartu: Total Klaster Logistik, Klaster Logistik Prov
 
 Pembaruan tampilan statistik: empat kartu dibuat lebih ringkas dan sejajar satu baris pada layar lebar; pada tablet dan ponsel kartu menyesuaikan menjadi dua kolom agar tetap terbaca.
 \n\nPerbaikan pembacaan spreadsheet: parser CSV kini mendeteksi pemisah koma/titik koma/tab dan memetakan variasi nama header ke nama kolom yang digunakan aplikasi. Jika tidak ada baris cocok, aplikasi menampilkan pesan yang lebih spesifik. URL CSV tetap menggunakan tab yang sudah dikonfigurasi; pastikan gid menunjuk ke DATA_KLASTER.\n
+<!-- Trigger deployment Vercel -->
