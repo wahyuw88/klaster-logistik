@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dashboard peta dan data Klaster Logistik Indonesia. Jelajahi status pembentukan klaster logistik menurut wilayah.">
+  <meta name="theme-color" content="#102a43">
+  <title>Klaster Logistik Indonesia</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-copy">
+      <h1 class="dashboard-title">Dashboard Klaster Logistik</h1>
+    </div>
+    <div class="topbar-right"><button id="refreshBtn" class="button-secondary topbar-refresh" type="button">↻ Muat ulang data</button></div>
+  </header>
+
+  <main class="page">
+    <section class="stats" aria-label="Ringkasan klaster logistik">
+      <article class="stat-card primary-stat"><span class="stat-label">Total Klaster Logistik</span><strong id="formedTotalCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+      <article class="stat-card"><span class="stat-label"><i class="legend-dot formed"></i> Klaster Logistik Provinsi</span><strong id="provinceClusterCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+      <article class="stat-card"><span class="stat-label"><i class="legend-dot verify"></i> Klaster Logistik Kab/Kota</span><strong id="regencyClusterCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+      <article class="stat-card"><span class="stat-label"><i class="legend-dot progress"></i> Dalam Proses</span><strong id="inProgressCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+    </section>
+
+    <section class="content-grid">
+      <article class="panel map-panel">
+        <div class="panel-heading">
+          <div class="map-heading-title"><h3>Peta Sebaran Klaster Logistik</h3></div>
+        </div>
+        <div id="map" role="application" aria-label="Peta sebaran klaster logistik Indonesia"></div>
+        <div class="map-legend">
+          <span><i class="legend-dot formed"></i> Ada klaster terbentuk</span>
+          <span><i class="legend-dot progress"></i> Dalam proses</span>
+          <span><i class="legend-dot notformed"></i> Belum terbentuk</span>
+          <span><i class="legend-dot nodata"></i> Belum ada data</span>
+        </div>
+      </article>
+
+      <article class="panel list-panel">
+        <div class="filters">
+          <label class="search-wrap"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Cari klaster atau wilayah…" autocomplete="off"></label>
+          <select id="statusFilter" aria-label="Filter status">
+            <option value="">Semua status</option>
+            <option>Terbentuk</option>
+            <option>Dalam Proses</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Klaster / Wilayah</th><th>Korwil</th><th>Status</th><th>Tahun</th></tr></thead>
+            <tbody id="clusterRows"><tr><td colspan="3" class="empty">Menghubungkan sumber data…</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="notice" class="notice" hidden></section>
+    <footer><span>Klaster Logistik Indonesia</span><span>Data bersumber dari Google Spreadsheet yang dipublikasikan</span></footer>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
