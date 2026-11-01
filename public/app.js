@@ -1,0 +1,318 @@
+const KORWIL_BY_PROVINCE = {"Aceh": "Wilayah I", "Riau": "Wilayah I", "Kepulauan Riau": "Wilayah I", "Jawa Tengah": "Wilayah I", "Daerah Istimewa Yogyakarta": "Wilayah I", "Bali": "Wilayah I", "Kalimantan Tengah": "Wilayah I", "Kalimantan Utara": "Wilayah I", "Sulawesi Tenggara": "Wilayah I", "Sulawesi Tengah": "Wilayah I", "Maluku Utara": "Wilayah I", "Papua": "Wilayah I", "Papua Selatan": "Wilayah I", "Sumatera Utara": "Wilayah II", "Jambi": "Wilayah II", "Sumatera Selatan": "Wilayah II", "Lampung": "Wilayah II", "Daerah Khusus Jakarta": "Wilayah II", "Banten": "Wilayah II", "Jawa Barat": "Wilayah II", "Nusa Tenggara Barat": "Wilayah II", "Kalimantan Timur": "Wilayah II", "Ibu Kota Nusantara": "Wilayah II", "Sulawesi Utara": "Wilayah II", "Gorontalo": "Wilayah II", "Papua Barat": "Wilayah II", "Papua Tengah": "Wilayah II", "Bengkulu": "Wilayah III", "Sumatera Barat": "Wilayah III", "Kepulauan Bangka Belitung": "Wilayah III", "Jawa Timur": "Wilayah III", "Kalimantan Barat": "Wilayah III", "Kalimantan Selatan": "Wilayah III", "Sulawesi Selatan": "Wilayah III", "Sulawesi Barat": "Wilayah III", "Nusa Tenggara Timur": "Wilayah III", "Maluku": "Wilayah III", "Papua Barat Daya": "Wilayah III", "Papua Pegunungan": "Wilayah III"};
+/*
+ * Hubungkan spreadsheet: ganti SHEET_CSV_URL dengan URL CSV dari
+ * Google Sheets > File > Share > Publish to web > DATA_KLASTER > CSV.
+ */
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRkXRhEJYgrlu_tKjg5BQ3R_C_ghkU2sdb9T-4ndRBvqo2tDJHtCOUOjHm7WHv9lA/pub?gid=130288309&single=true&output=csv";
+const GEOJSON_URLS = [
+  // File ringan dan sesuai untuk peta tingkat provinsi.
+  "https://raw.githubusercontent.com/superpikar/indonesia-geojson/master/indonesia-province-simple.json",
+  // GeoJSON dengan kode provinsi.
+  "https://raw.githubusercontent.com/ans-4175/peta-indonesia-geojson/master/indonesia-prov.geojson",
+  // Sumber lengkap sebagai fallback terakhir.
+  "https://raw.githubusercontent.com/superpikar/indonesia-geojson/master/indonesia-province.json"
+];
+
+const $ = (id) => document.getElementById(id);
+let clusters = [];
+let activeKorwil = "";
+let provinceLayer = null;
+let map = null;
+let provinceFeatures = [];
+let provinceCodeKeys = ["kode_provinsi", "kode provinsi", "prov_code", "kode"];
+
+function norm(value) {
+  return String(value ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+function clean(value) { return String(value ?? "").trim(); }
+
+function getKorwil(province) {
+  const key = norm(province).replace(/[^a-z0-9]/g, "");
+  for (const [name, korwil] of Object.entries(KORWIL_BY_PROVINCE)) {
+    if (norm(name).replace(/[^a-z0-9]/g, "") === key) return korwil;
+  }
+  // Common abbreviated variants from data providers
+  const aliases = {
+    "dki jakarta":"Daerah Khusus Jakarta",
+    "jakarta":"Daerah Khusus Jakarta",
+    "di yogyakarta":"Daerah Istimewa Yogyakarta",
+    "yogyakarta":"Daerah Istimewa Yogyakarta",
+    "babel":"Kepulauan Bangka Belitung",
+    "kepri":"Kepulauan Riau",
+    "kalimantan utara":"Kalimantan Utara",
+    "nusantara":"Ibu Kota Nusantara"
+  };
+  const resolved = aliases[norm(province)];
+  return resolved ? KORWIL_BY_PROVINCE[resolved] || null : null;
+}
+
+function parseCSV(text) {
+  // Detect comma/semicolon/tab separators from the header line, respecting quotes.
+  const firstLine = (text.split(/\r\n|\n|\r/).find(line => line.trim()) || "");
+  const separators = [",", ";", "\t"];
+  let delimiter = ",";
+  let best = -1;
+  for (const sep of separators) {
+    let count = 0, quoted = false;
+    for (let i = 0; i < firstLine.length; i++) {
+      if (firstLine[i] === '"') {
+        if (quoted && firstLine[i+1] === '"') i++;
+        else quoted = !quoted;
+      } else if (firstLine[i] === sep && !quoted) count++;
+    }
+    if (count > best) { best = count; delimiter = sep; }
+  }
+
+  const rows = []; let row = []; let cell = ""; let quoted = false;
+  for (let i=0; i<text.length; i++) {
+    const c = text[i], next = text[i+1];
+    if (c === '"' && quoted && next === '"') { cell += '"'; i++; }
+    else if (c === '"') quoted = !quoted;
+    else if (c === delimiter && !quoted) { row.push(cell); cell = ""; }
+    else if ((c === '\n' || c === '\r') && !quoted) {
+      if (c === '\r' && next === '\n') i++;
+      row.push(cell); if (row.some(v => clean(v) !== "")) rows.push(row);
+      row = []; cell = "";
+    } else cell += c;
+  }
+  if (cell.length || row.length) { row.push(cell); if (row.some(v => clean(v) !== "")) rows.push(row); }
+  if (!rows.length) return [];
+
+  const normalizeHeader = h => clean(h).replace(/^\uFEFF/, "").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s./-]+/g, "_").replace(/[^a-z0-9_]/g, "").replace(/^_+|_+$/g, "");
+  const aliases = {
+    cluster_id: ["cluster_id","id_klaster","id","kode_klaster","kode"],
+    nama_klaster: ["nama_klaster","nama_klaster_logistik","klaster","nama_cluster","nama"],
+    kode_provinsi: ["kode_provinsi","kode_prov","kode_provinsi_induk"],
+    nama_provinsi: ["nama_provinsi","provinsi","provinsi_nama","nama_propinsi","propinsi"],
+    kode_kab_kota: ["kode_kab_kota","kode_kabupaten_kota","kode_kab_kota_induk","kode_wilayah"],
+    nama_kab_kota: ["nama_kab_kota","nama_kabupaten_kota","kabupaten_kota","kab_kota","nama_kabupaten","nama_kota","kabupaten","kota"],
+    jenis_wilayah: ["jenis_wilayah","tingkat_wilayah","kategori_wilayah","jenis_daerah"],
+    status_pembentukan: ["status_pembentukan","status","status_klaster","status_pembentukan_klaster"],
+    tanggal_pembentukan: ["tanggal_pembentukan","tgl_pembentukan","tanggal"],
+    tahun_pembentukan: ["tahun_pembentukan","tahun","tahun_dibentuk"],
+    catatan: ["catatan","keterangan","deskripsi"]
+  };
+  const headers = rows.shift().map(normalizeHeader);
+  const canonical = headers.map(h => {
+    for (const [key, names] of Object.entries(aliases)) if (names.includes(h)) return key;
+    return h;
+  });
+  return rows.map(values => {
+    const obj = {};
+    canonical.forEach((h,i) => { if (h) obj[h] = clean(values[i]); });
+    return obj;
+  }).filter(r => Object.values(r).some(v => v !== ""));
+}
+function get(row, key) { return clean(row[key]); }
+function statusClass(status) {
+  const s = norm(status);
+  if (s === "terbentuk") return "status-terbentuk";
+  if (s === "dalam proses") return "status-dalam-proses";
+  return "status-unknown";
+}
+function statusColor(status) {
+  const s = norm(status);
+  if (s === "terbentuk") return "#198754";
+  if (s === "dalam proses") return "#d6a21d";
+  return "#b8c5d1";
+}
+function provinceName(feature) {
+  const p = feature.properties || {};
+  const candidates = [
+    p.Propinsi, p.PROVINSI, p.provinsi, p.Provinsi,
+    p.name, p.NAME, p.NAME_1, p.NAME_2, p.NAME_3,
+    p.prov_name, p.province, p.PROVINCE, p.PROVINCE_NAME,
+    p.Propinsi, p.NAMOBJ, p.WADMPR, p.nm_provinsi
+  ];
+  const value = candidates.find(v => typeof v === "string" && v.trim());
+  return value || "Provinsi";
+}
+function formatProvinceName(name) {
+  const value = String(name || "").trim().toLocaleLowerCase("id-ID");
+  const title = value.replace(/\b\p{L}/gu, ch => ch.toLocaleUpperCase("id-ID"));
+  return title
+    .replace(/^Di Yogyakarta$/i, "DI Yogyakarta")
+    .replace(/^Dki Jakarta$/i, "DKI Jakarta");
+}
+function clustersForProvince(name) {
+  const key = norm(name);
+  return clusters.filter(c => norm(get(c,"nama_provinsi")) === key);
+}
+function provinceSummary(name) {
+  const data = clustersForProvince(name).filter(c => !activeKorwil || getKorwil(get(c,"nama_provinsi")) === activeKorwil);
+  if (!data.length) return {status:"Belum Ada Data", count:0, color:"#b8c5d1"};
+  const statuses = data.map(c => norm(get(c,"status_pembentukan")));
+  let status = "Dalam Proses";
+  if (statuses.includes("terbentuk")) status = "Terbentuk";
+  else if (statuses.includes("dalam proses")) status = "Dalam Proses";
+  return {status, count:data.length, color:statusColor(status)};
+}
+function styleFeature(feature) {
+  const s = provinceSummary(provinceName(feature));
+  return {color:"#ffffff", weight:1.2, opacity:1, fillColor:s.color, fillOpacity:.78};
+}
+async function loadProvinceGeoJSON() {
+  let lastError = null;
+  for (const url of GEOJSON_URLS) {
+    try {
+      const response = await fetch(url, {cache:"force-cache"});
+      if (!response.ok) throw new Error(`Sumber peta merespons ${response.status}`);
+      const geo = await response.json();
+      if (!geo || !Array.isArray(geo.features) || !geo.features.length) throw new Error("Format GeoJSON tidak valid");
+      return geo;
+    } catch (err) { lastError = err; }
+  }
+  throw lastError || new Error("Semua sumber peta gagal");
+}
+function initMap() {
+  if (!window.L) {
+    showNotice("Library peta tidak berhasil dimuat. Periksa koneksi internet atau blokir CDN.");
+    return;
+  }
+  map = L.map("map", {scrollWheelZoom:true, zoomControl:true, preferCanvas:true}).setView([-2.5,118], 4.2);
+  // Basemap terbaru dan interaktif: label tempat + pilihan layer peta.
+  const voyager = L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    attribution:'&copy; OpenStreetMap contributors &copy; CARTO', subdomains:"abcd", maxZoom:20
+  }).addTo(map);
+  const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution:'&copy; OpenStreetMap contributors', maxZoom:19
+  });
+  L.control.layers({"Peta modern (Voyager)":voyager,"OpenStreetMap":osm}, null, {collapsed:true}).addTo(map);
+  L.control.scale({imperial:false, position:"bottomleft"}).addTo(map);
+  loadProvinceGeoJSON().then(geo => {
+    provinceFeatures = geo.features || [];
+    provinceLayer = L.geoJSON(geo, {
+      style:styleFeature,
+      onEachFeature:(feature, layer) => {
+        const name = provinceName(feature);
+        layer.on("mouseover", function(){ this.setStyle({weight:2.5, color:"#102a43", fillOpacity:.92}); });
+        layer.on("mouseout", function(){ if (provinceLayer) provinceLayer.resetStyle(this); });
+        layer.on("click", function() {
+          const provinceData = clustersForProvince(name).filter(c => !activeKorwil || getKorwil(get(c,"nama_provinsi")) === activeKorwil);
+          const kabKotaNames = [...new Set(provinceData
+            .filter(c => /kabupaten|kota|kab\/kota/i.test(get(c,"jenis_wilayah")))
+            .map(c => get(c,"nama_kab_kota"))
+            .filter(Boolean))];
+          const provinceLabel = escapeHTML(formatProvinceName(name));
+          const kabKotaLabel = escapeHTML(kabKotaNames.join(", ") || "—");
+          const totalClusters = provinceData.length;
+          const html = `<div class="popup-title">${totalClusters} Klaster Logistik</div><div class="popup-line">Klaster Logistik Provinsi: ${provinceLabel}</div><div class="popup-line">Klaster Logistik Kab/Kota: ${kabKotaLabel}</div>`;
+          this.bindPopup(html).openPopup();
+          $("searchInput").value = name;
+          renderTable();
+        });
+      }
+    }).addTo(map);
+    try { map.fitBounds(provinceLayer.getBounds(), {padding:[8,8]}); } catch(e) {}
+    setTimeout(() => { if (map) map.invalidateSize(); }, 100);
+    refreshMap();
+  }).catch((error) => {
+    console.error("Gagal memuat GeoJSON provinsi:", error);
+    showNotice("Peta batas provinsi gagal dimuat. Periksa koneksi internet/CDN atau buka Console browser untuk melihat sumber GeoJSON yang gagal. Daftar data tetap bisa digunakan.");
+  });
+}
+function refreshMap() { if (provinceLayer) provinceLayer.setStyle(styleFeature); }
+function escapeHTML(value) {
+  return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function showNotice(message) { $("notice").hidden = false; $("notice").textContent = message; }
+function hideNotice() { $("notice").hidden = true; }
+function visibleClusters() { return activeKorwil ? clusters.filter(c => getKorwil(get(c,"nama_provinsi")) === activeKorwil) : clusters; }
+function renderStats() {
+  // Statistik menghitung jumlah baris klaster berstatus "Terbentuk",
+  // bukan jumlah wilayah unik.
+  const scoped = visibleClusters();
+  const formed = scoped.filter(c => norm(get(c,"status_pembentukan")) === "terbentuk");
+  const wilayahType = (c) => norm(get(c, "jenis_wilayah"))
+    .replace(/[\s._-]+/g, "")
+    .replace(/kabupatenadministratif/g, "kabupaten");
+
+  const provinceClusters = formed.filter(c => wilayahType(c).includes("provinsi"));
+  const kabKotaClusters = formed.filter(c => {
+    const type = wilayahType(c);
+    return type.includes("kabupaten") || type === "kota" || type.startsWith("kota");
+  });
+
+  $("formedTotalCount").textContent = formed.length.toLocaleString("id-ID");
+  $("provinceClusterCount").textContent = provinceClusters.length.toLocaleString("id-ID");
+  $("regencyClusterCount").textContent = kabKotaClusters.length.toLocaleString("id-ID");
+  const inProgress = scoped.filter(c => norm(get(c,"status_pembentukan")) === "dalam proses");
+  $("inProgressCount").textContent = inProgress.length.toLocaleString("id-ID");
+}
+function renderTable() {
+  const q = norm($("searchInput").value);
+  const status = norm($("statusFilter").value);
+  const scoped = visibleClusters();
+  const rows = scoped.filter(c => {
+    const haystack = norm([get(c,"cluster_id"),get(c,"nama_klaster"),get(c,"nama_provinsi"),get(c,"nama_kab_kota"),get(c,"jenis_wilayah"),getKorwil(get(c,"nama_provinsi")) || ""].join(" "));
+    return (!q || haystack.includes(q)) && (!status || norm(get(c,"status_pembentukan")) === status);
+  }).sort((a, b) => {
+    const yearA = Number.parseInt(get(a, "tahun_pembentukan"), 10) || 0;
+    const yearB = Number.parseInt(get(b, "tahun_pembentukan"), 10) || 0;
+    return yearB - yearA; // Tahun terbaru tampil lebih dahulu
+  });
+  const resultCountEl = $("resultCount");
+  if (resultCountEl) resultCountEl.textContent = `${rows.length.toLocaleString("id-ID")} data`;
+  if (!rows.length) {
+    $("clusterRows").innerHTML = `<tr><td colspan="4" class="empty">${scoped.length ? "Tidak ada data yang cocok dengan pencarian." : "Belum ada data klaster. Hubungkan Google Spreadsheet melalui pengaturan di public/app.js."}</td></tr>`;
+    return;
+  }
+  $("clusterRows").innerHTML = rows.map(c => {
+    const title = get(c,"nama_klaster") || get(c,"cluster_id") || "Klaster tanpa nama";
+    const region = [get(c,"jenis_wilayah"),get(c,"nama_kab_kota"),get(c,"nama_provinsi")].filter(Boolean).join(", ") || "Wilayah belum diisi";
+    const korwil = getKorwil(get(c,"nama_provinsi")) || "Belum dipetakan";
+    const statusText = get(c,"status_pembentukan") || "Belum Ada Data";
+    return `<tr><td><span class="cluster-name">${escapeHTML(title)}</span><span class="cluster-region">${escapeHTML(region)}</span></td><td>${escapeHTML(korwil)}</td><td><span class="status-badge ${statusClass(statusText)}">${escapeHTML(statusText)}</span></td><td>${escapeHTML(get(c,"tahun_pembentukan") || "—")}</td></tr>`;
+  }).join("");
+}
+async function loadData() {
+
+  $("clusterRows").innerHTML = '<tr><td colspan="4" class="empty">Menghubungkan sumber data…</td></tr>';
+  hideNotice();
+  if (!SHEET_CSV_URL.startsWith("http")) {
+    clusters = [];
+    renderStats(); renderTable(); refreshMap();
+
+    showNotice("Aplikasi siap digunakan. Untuk menampilkan data, publikasikan sheet DATA_KLASTER sebagai CSV dan masukkan URL-nya ke variabel SHEET_CSV_URL di public/app.js.");
+    return;
+  }
+  try {
+    const response = await fetch(SHEET_CSV_URL, {cache:"no-store"});
+    if (!response.ok) throw new Error("Google Sheets merespons " + response.status);
+    const csv = await response.text();
+    clusters = parseCSV(csv)
+      .filter(c => get(c,"nama_klaster") || get(c,"cluster_id"))
+      .filter(c => !norm(get(c,"cluster_id")).includes("contoh-hapus"))
+      .filter(c => ["terbentuk", "dalam proses"].includes(norm(get(c,"status_pembentukan"))));
+    renderStats(); renderTable(); refreshMap();
+
+    if (!clusters.length) showNotice("CSV berhasil diakses, tetapi tidak ada baris yang cocok. Periksa apakah URL mengarah ke sheet DATA_KLASTER dan kolom memiliki nama klaster/cluster_id serta status_pembentukan/status.");
+  } catch (error) {
+
+    showNotice("Data Google Spreadsheet gagal dibaca. Pastikan sheet dipublikasikan sebagai CSV, URL benar, dan akses publik aktif. Buka Console browser untuk detail teknis.");
+    clusters = []; renderStats(); renderTable(); refreshMap();
+  }
+}
+$("searchInput").addEventListener("input", renderTable);
+$("statusFilter").addEventListener("change", renderTable);
+document.querySelectorAll(".korwil-button").forEach(button => button.addEventListener("click", () => {
+  activeKorwil = button.dataset.korwil || "";
+  document.querySelectorAll(".korwil-button").forEach(item => item.classList.toggle("active", item === button));
+  renderStats(); renderTable(); refreshMap();
+}));
+$("refreshBtn").addEventListener("click", loadData);
+initMap();
+loadData();
+
+let resourceData=[];function rv(r,k){return String(r[k]??"").trim()}function resourceFilterOptions(k,id){[...new Set(resourceData.map(r=>rv(r,k)).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"id")).forEach(v=>$(id).add(new Option(v,v)))}function renderResources(){const q=norm($("resourceSearch").value),cat=$("resourceCategoryFilter").value,prov=$("resourceProvinceFilter").value;const rows=resourceData.filter(r=>{const hay=norm([rv(r,"nama"),rv(r,"instansi"),rv(r,"provinsi"),rv(r,"kabupaten_kota"),rv(r,"kategori"),rv(r,"jenis")].join(" "));return(!q||hay.includes(q))&&(!cat||rv(r,"kategori")===cat)&&(!prov||rv(r,"provinsi")===prov)});$("resourceRecordCount").textContent=rows.length.toLocaleString("id-ID");$("resourceOrgCount").textContent=new Set(rows.map(r=>rv(r,"instansi")).filter(Boolean)).size.toLocaleString("id-ID");$("resourceCategoryCount").textContent=new Set(rows.map(r=>rv(r,"kategori")).filter(Boolean)).size.toLocaleString("id-ID");$("resourceProvinceCount").textContent=new Set(rows.map(r=>rv(r,"provinsi")).filter(Boolean)).size.toLocaleString("id-ID");$("resourceResultCount").textContent=rows.length.toLocaleString("id-ID")+" data";$("resourceRows").innerHTML=rows.length?rows.map(r=>`<tr><td><strong>${escapeHTML(rv(r,"instansi")||"Instansi tidak tercantum")}</strong><br><span class="cluster-region">${escapeHTML(rv(r,"nama")||"—")}</span></td><td>${escapeHTML(rv(r,"provinsi")||"—")}</td><td>${escapeHTML(rv(r,"kabupaten_kota")||"—")}</td><td>${escapeHTML(rv(r,"kategori")||"—")}</td><td>${escapeHTML(rv(r,"jenis")||"—")}</td><td>${escapeHTML(rv(r,"jumlah")||"—")}</td><td>${escapeHTML(rv(r,"satuan")||"—")}</td></tr>`).join(""):'<tr><td colspan="7" class="empty">Tidak ada data yang sesuai dengan filter.</td></tr>'}async function loadResources(){try{const r=await fetch("/sumberdaya.json",{cache:"no-store"});if(!r.ok)throw Error();resourceData=await r.json();resourceFilterOptions("kategori","resourceCategoryFilter");resourceFilterOptions("provinsi","resourceProvinceFilter");renderResources()}catch(e){$("resourceRows").innerHTML='<tr><td colspan="7" class="empty">Data sumber daya gagal dimuat.</td></tr>'}}const pageTargets={home:["dashboardPage"],articles:["articlesPage"],laws:["lawsPage"],about:["aboutPage"],contact:["contactPage"]};
+const pageSEO={
+ home:{title:"Dashboard Klaster Logistik | Peta dan Informasi Penanggulangan Bencana",description:"Dashboard dan Informasi Klaster Logistik Penanggulangan Bencana di Indonesia. Lihat peta sebaran, statistik, status pembentukan, dan data wilayah."},
+ articles:{title:"Artikel dan Berita Klaster Logistik | BNPB",description:"Kumpulan artikel dan berita resmi terkait pembentukan, penguatan, koordinasi, monitoring, dan evaluasi Klaster Logistik Penanggulangan Bencana."},
+ laws:{title:"Dasar Hukum Klaster Logistik | Peraturan dan Pedoman BNPB",description:"Referensi peraturan dan pedoman BNPB tentang Klaster Logistik Penanggulangan Bencana serta manajemen logistik dan peralatan."},
+ about:{title:"Tentang Website | Dashboard Klaster Logistik",description:"Informasi tentang tujuan, fitur, cakupan, sumber data, dan batasan penggunaan website Dashboard Klaster Logistik."},
+ contact:{title:"Kontak Pengelola | Dashboard Klaster Logistik",description:"Informasi kontak dan kanal komunikasi terkait website Dashboard Klaster Logistik."}
+};
+function updatePageSEO(target){const data=pageSEO[target]||pageSEO.home;document.title=data.title;const meta=document.querySelector('meta[name="description"]');if(meta)meta.setAttribute("content",data.description);const ogTitle=document.querySelector('meta[property="og:title"]');if(ogTitle)ogTitle.setAttribute("content",data.title);const ogDesc=document.querySelector('meta[property="og:description"]');if(ogDesc)ogDesc.setAttribute("content",data.description);}
+document.querySelectorAll(".main-nav-link").forEach(link=>link.addEventListener("click",event=>{event.preventDefault();const target=link.dataset.nav;const visible=pageTargets[target]||["dashboardPage"];["dashboardPage","resourcesPage","articlesPage","lawsPage","aboutPage","contactPage"].forEach(id=>{const el=$(id);if(el)el.hidden=!visible.includes(id)});document.querySelectorAll(".main-nav-link").forEach(item=>item.classList.toggle("active",item===link));updatePageSEO(target);if(target==="home"&&map)setTimeout(()=>map.invalidateSize(),80);window.scrollTo({top:0,behavior:"smooth"});}));$("resourceSearch").addEventListener("input",renderResources);$("resourceCategoryFilter").addEventListener("change",renderResources);$("resourceProvinceFilter").addEventListener("change",renderResources);loadResources();

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dashboard dan Informasi Klaster Logistik Penanggulangan Bencana di Indonesia. Lihat peta sebaran, statistik, status pembentukan, dan data wilayah.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="author" content="Pengelola Platform Klaster Logistik">
+  <meta name="keywords" content="Klaster Logistik, Klaster Logistik Indonesia, logistik kebencanaan, penanggulangan bencana, BNPB, BPBD, peta klaster logistik">
+  <link rel="canonical" href="https://klaster-logistik.vercel.app/">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="id_ID">
+  <meta property="og:site_name" content="Dashboard Klaster Logistik">
+  <meta property="og:title" content="Dashboard Klaster Logistik | Peta dan Informasi Penanggulangan Bencana">
+  <meta property="og:description" content="Dashboard dan Informasi Klaster Logistik Penanggulangan Bencana di Indonesia.">
+  <meta property="og:url" content="https://klaster-logistik.vercel.app/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Dashboard Klaster Logistik">
+  <meta name="twitter:description" content="Dashboard dan Informasi Klaster Logistik Penanggulangan Bencana di Indonesia.">
+  <meta name="theme-color" content="#102a43">
+  <title>Dashboard Klaster Logistik | Peta dan Informasi Penanggulangan Bencana</title>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"Dashboard Klaster Logistik","url":"https://klaster-logistik.vercel.app/","inLanguage":"id-ID","description":"Dashboard dan Informasi Klaster Logistik Penanggulangan Bencana di Indonesia."}</script>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-copy">
+      <h1 class="dashboard-title">Dashboard Klaster Logistik</h1>
+      <p class="header-subtitle">Dashboard dan Informasi Klaster Logistik Penanggulangan Bencana di Indonesia</p>
+    </div>
+    <nav class="main-nav" aria-label="Navigasi utama">
+      <a href="#beranda" class="main-nav-link active" data-nav="home">Beranda</a>
+      <a href="#articlesPage" class="main-nav-link" data-nav="articles">Artikel</a>
+      <a href="#lawsPage" class="main-nav-link" data-nav="laws">Dasar Hukum</a>
+      <a href="#aboutPage" class="main-nav-link" data-nav="about">Tentang Kami</a>
+      <a href="#contactPage" class="main-nav-link" data-nav="contact">Kontak</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <section id="dashboardPage" aria-label="Dashboard Klaster Logistik">
+    <nav class="korwil-selector" aria-label="Filter wilayah koordinator">
+      <button type="button" class="korwil-button active" data-korwil="">Semua Wilayah</button>
+      <button type="button" class="korwil-button" data-korwil="Wilayah I">Wilayah I</button>
+      <button type="button" class="korwil-button" data-korwil="Wilayah II">Wilayah II</button>
+      <button type="button" class="korwil-button" data-korwil="Wilayah III">Wilayah III</button>
+      <button id="refreshBtn" class="button-secondary korwil-refresh" type="button">↻ Muat ulang data</button>
+    </nav>
+
+    <section class="stats" id="beranda" aria-label="Ringkasan klaster logistik">
+      <article class="stat-card primary-stat"><span class="stat-label">Total Klaster Logistik</span><strong id="formedTotalCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+      <article class="stat-card"><span class="stat-label"><i class="legend-dot formed"></i> Klaster Logistik Provinsi</span><strong id="provinceClusterCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+      <article class="stat-card"><span class="stat-label"><i class="legend-dot verify"></i> Klaster Logistik Kab/Kota</span><strong id="regencyClusterCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+      <article class="stat-card"><span class="stat-label"><i class="legend-dot progress"></i> Dalam Proses</span><strong id="inProgressCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+    </section>
+
+    <section class="content-grid" id="klaster">
+      <article class="panel map-panel">
+        <div class="panel-heading">
+          <div class="map-heading-title"><h3>Peta Sebaran Klaster Logistik</h3></div>
+        </div>
+        <div id="map" role="application" aria-label="Peta interaktif sebaran Klaster Logistik berdasarkan provinsi"></div>
+        <div class="map-legend">
+          <span><i class="legend-dot formed"></i> Ada klaster terbentuk</span>
+          <span><i class="legend-dot progress"></i> Dalam proses</span>
+          <span><i class="legend-dot notformed"></i> Belum terbentuk</span>
+          <span><i class="legend-dot nodata"></i> Belum ada data</span>
+        </div>
+      </article>
+
+      <article class="panel list-panel">
+        <div class="filters">
+          <label class="search-wrap"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Cari klaster atau wilayah…" autocomplete="off"></label>
+          <select id="statusFilter" aria-label="Filter status">
+            <option value="">Semua status</option>
+            <option>Terbentuk</option>
+            <option>Dalam Proses</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Klaster / Wilayah</th><th>Korwil</th><th>Status</th><th>Tahun</th></tr></thead>
+            <tbody id="clusterRows"><tr><td colspan="4" class="empty">Menghubungkan data Klaster Logistik…</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="notice" class="notice" hidden></section>
+    </section>
+    <section id="resourcesPage" hidden>
+      <div class="resource-intro"><div><h2>Sumber Daya Logistik</h2><p>Data sumber daya anggota Klaster Logistik berdasarkan report_sumberdaya.csv.</p></div><span class="resource-source">Sumber: DATA_SUMBER_DAYA</span></div>
+      <section class="resource-stats"><article class="stat-card"><span class="stat-label">Data sumber daya</span><strong id="resourceRecordCount">0</strong></article><article class="stat-card"><span class="stat-label">Instansi terdata</span><strong id="resourceOrgCount">0</strong></article><article class="stat-card"><span class="stat-label">Kategori</span><strong id="resourceCategoryCount">0</strong></article><article class="stat-card"><span class="stat-label">Provinsi</span><strong id="resourceProvinceCount">0</strong></article></section>
+      <article class="panel resource-panel"><div class="resource-filters"><label class="search-wrap"><span>⌕</span><input id="resourceSearch" type="search" placeholder="Cari instansi, jenis, atau lokasi…" autocomplete="off"></label><select id="resourceCategoryFilter"><option value="">Semua kategori</option></select><select id="resourceProvinceFilter"><option value="">Semua provinsi</option></select></div>
+      <div class="resource-table-wrap"><table class="resource-table"><thead><tr><th>Instansi / Responden</th><th>Provinsi</th><th>Kab/Kota</th><th>Kategori</th><th>Jenis Sumber Daya</th><th>Jumlah</th><th>Satuan</th></tr></thead><tbody id="resourceRows"><tr><td colspan="7" class="empty">Memuat data sumber daya…</td></tr></tbody></table></div><div class="resource-table-footer"><span id="resourceResultCount">0 data</span><span>Data ditampilkan sesuai isi sumber.</span></div></article>
+    </section>
+    <section id="articlesPage" class="content-page" hidden>
+      <div class="content-page-heading"><span class="eyebrow">BERITA & PUBLIKASI RESMI</span><h2>Artikel dan Berita Klaster Logistik Penanggulangan Bencana</h2><p>Kumpulan publikasi terkait pembentukan, penguatan, koordinasi, pemantauan, dan evaluasi Klaster Logistik yang diterbitkan oleh BNPB.</p></div>
+      <div class="article-grid">
+        <article class="article-card"><span class="article-kicker">26 SEPTEMBER 2025 · BNPB</span><h3>BNPB Sosialisasikan Indikator Monitoring Evaluasi Klaster Logistik untuk Daerah</h3><p>BNPB memperkenalkan indikator monitoring dan evaluasi untuk mengukur aktivitas Klaster Logistik daerah. Publikasi ini juga membahas pemanfaatan SK kepala daerah, penyusunan SOP, konsep operasi logistik, peningkatan kapasitas SDM, serta pelaporan melalui fitur digital.</p><a href="https://www.bnpb.go.id/berita/bnpb-sosialisasikan-indikator-monitoring-evaluasi-klaster-logistik-untuk-daerah" target="_blank" rel="noopener">Baca artikel di BNPB ↗</a></article>
+        <article class="article-card"><span class="article-kicker">31 JULI 2025 · BNPB</span><h3>BNPB Dukung Pembentukan Klaster Logistik di Kabupaten Wonosobo</h3><p>Berita mengenai dukungan BNPB terhadap pembentukan Klaster Logistik Kabupaten Wonosobo melalui pemetaan kapasitas lintas sektor yang melibatkan pemerintah dan organisasi non-pemerintah.</p><a href="https://bnpb.go.id/berita/bnpb-dukung-pembentukan-klaster-logistik-di-kabupaten-wonosobo" target="_blank" rel="noopener">Baca artikel di BNPB ↗</a></article>
+        <article class="article-card"><span class="article-kicker">31 JULI 2025 · BNPB</span><h3>BNPB Mendorong Pembentukan Klaster Logistik Banggai Laut</h3><p>Publikasi tentang dorongan pembentukan Klaster Logistik di Kabupaten Banggai Laut serta peran koordinasi logistik pada fase prabencana, tanggap darurat, dan pascabencana.</p><a href="https://bnpb.go.id/berita/bnpb-mendorong-pembentukan-klaster-logistik-banggai-laut" target="_blank" rel="noopener">Baca artikel di BNPB ↗</a></article>
+        <article class="article-card"><span class="article-kicker">23 MEI 2025 · BNPB</span><h3>BNPB Dampingi Pembentukan Klaster Logistik Penanggulangan Bencana Kabupaten Bandung</h3><p>Berita pendampingan BNPB dalam pembentukan Klaster Logistik Kabupaten Bandung untuk memperkuat koordinasi dan sinergi antara pemerintah, dunia usaha, dan masyarakat.</p><a href="https://www.bnpb.go.id/berita/bnpb-dampingi-pembentukan-klaster-logistik-penanggulangan-bencana-kabupaten-bandung" target="_blank" rel="noopener">Baca artikel di BNPB ↗</a></article>
+        <article class="article-card"><span class="article-kicker">11 DESEMBER 2024 · BNPB</span><h3>BNPB Bersama WFP Gelar Rapat Koordinasi Klaster Logistik di Tingkat Provinsi</h3><p>Rapat koordinasi BNPB dan World Food Programme bersama BPBD provinsi untuk berbagi informasi kegiatan Klaster Logistik dan mendukung penyusunan kerangka pemantauan serta evaluasi.</p><a href="https://bnpb.go.id/berita/bnpb-bersama-wfp-gelar-rapat-koordinasi-klaster-logistik-di-tingkat-provinsi" target="_blank" rel="noopener">Baca artikel di BNPB ↗</a></article>
+        <article class="article-card"><span class="article-kicker">PANDUAN RESMI · JDIH BNPB</span><h3>Petunjuk Pelaksanaan Penyelenggaraan Klaster Logistik Penanggulangan Bencana</h3><p>Dokumen pelaksanaan yang memuat panduan pengorganisasian, penyelenggaraan, dan pelaporan Klaster Logistik Penanggulangan Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/juklak-nomor-16-tahun-2025" target="_blank" rel="noopener">Baca dokumen di JDIH BNPB ↗</a></article>
+      </div>
+      <p class="article-disclaimer">Artikel dan berita di halaman ini merupakan kurasi publikasi yang ditemukan pada kanal resmi BNPB dan JDIH BNPB. Halaman ini bukan arsip lengkap seluruh publikasi BNPB; tautan sumber asli digunakan agar pembaca dapat memeriksa konteks dan informasi terbaru.</p>
+    </section>
+    <section id="lawsPage" class="content-page" hidden>
+      <div class="content-page-heading"><span class="eyebrow">REFERENSI REGULASI</span><h2>Dasar Hukum Klaster Logistik Penanggulangan Bencana</h2><p>Kumpulan peraturan dan pedoman BNPB yang secara langsung mengatur Klaster Logistik maupun mendukung tata kelola manajemen logistik dan peralatan penanggulangan bencana.</p></div>
+      <div class="law-group"><h3>Regulasi khusus Klaster Logistik</h3><div class="law-grid">
+        <article class="law-card"><span class="law-status">Status JDIH: Berlaku</span><h4>Peraturan BNPB Nomor 6 Tahun 2022</h4><p><strong>Tentang Klaster Logistik Penanggulangan Bencana.</strong> Menjadi dasar pengaturan pembentukan Klaster Logistik nasional, provinsi, dan kabupaten/kota serta struktur organisasinya.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perban-nomor-6-tahun-2022" target="_blank" rel="noopener">Lihat dokumen JDIH BNPB ↗</a></article>
+        <article class="law-card"><span class="law-status">Status JDIH: Berlaku</span><h4>Petunjuk Pelaksanaan Nomor 16 Tahun 2025</h4><p><strong>Tentang Penyelenggaraan Klaster Logistik Penanggulangan Bencana.</strong> Memuat panduan pengorganisasian, penyelenggaraan, dan pelaporan Klaster Logistik.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/juklak-nomor-16-tahun-2025" target="_blank" rel="noopener">Lihat dokumen JDIH BNPB ↗</a></article>
+        <article class="law-card"><span class="law-status">Status JDIH: Berlaku · dokumen belum tersedia</span><h4>Petunjuk Pelaksanaan Nomor 2 Tahun 2023</h4><p><strong>Tentang Pembentukan Klaster Logistik Penanggulangan Bencana Daerah.</strong> Entri dokumen tercantum pada JDIH BNPB; file dokumen dinyatakan belum tersedia pada halaman JDIH yang diperiksa.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/juknis-nomor-2-tahun-2023" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+      </div></div>
+      <div class="law-group"><h3>Peraturan pendukung manajemen logistik dan peralatan</h3><p class="law-intro">Dokumen berikut tercantum dalam hasil penelusuran JDIH BNPB dengan subjek Manajemen Logistik. Relevansinya adalah pada pengelolaan bantuan, standardisasi, inventarisasi, serta monitoring dan evaluasi logistik bencana.</p><div class="law-grid">
+        <article class="law-card"><h4>Perka BNPB Nomor 25 Tahun 2014</h4><p>Pengelolaan Pertanggungjawaban Bantuan Logistik Penanggulangan Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-25-tahun-2014" target="_blank" rel="noopener">Lihat di JDIH BNPB ↗</a></article>
+        <article class="law-card"><span class="law-status">Status JDIH: Berlaku</span><h4>Perka BNPB Nomor 24 Tahun 2014</h4><p>Perubahan atas Peraturan Kepala BNPB Nomor 4 Tahun 2009 tentang Pedoman Bantuan Logistik.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-24-tahun-2014" target="_blank" rel="noopener">Lihat dokumen JDIH BNPB ↗</a></article>
+        <article class="law-card"><h4>Perka BNPB Nomor 23 Tahun 2014</h4><p>Standarisasi Logistik Penanggulangan Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-23-tahun-2014" target="_blank" rel="noopener">Lihat di JDIH BNPB ↗</a></article>
+        <article class="law-card"><span class="law-status">Status JDIH: Berlaku</span><h4>Perka BNPB Nomor 20 Tahun 2014</h4><p>Pedoman Monitoring dan Evaluasi Manajemen Logistik Penanggulangan Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-20-tahun-2014" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><span class="law-status">Status JDIH: Berlaku</span><h4>Perka BNPB Nomor 10 Tahun 2012</h4><p>Pengelolaan Bantuan Logistik pada Status Keadaan Darurat Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-10-tahun-2012" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><span class="law-status">Status JDIH: Berlaku</span><h4>Perka BNPB Nomor 10 Tahun 2011</h4><p>Pedoman Inventarisasi Logistik.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-10-tahun-2011" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><span class="law-status">Status JDIH: Berlaku</span><h4>Perka BNPB Nomor 18 Tahun 2009</h4><p>Pedoman Standarisasi Logistik.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-18-tahun-2009" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><span class="law-status">Status JDIH: Berlaku</span><h4>Perka BNPB Nomor 4 Tahun 2009</h4><p>Pedoman Bantuan Logistik.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-4-tahun-2009" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+      </div></div>
+      <div class="law-group"><h3>Referensi tambahan sistem manajemen logistik dan peralatan</h3><p class="law-intro">Dokumen pada kelompok ini tercantum pada penelusuran JDIH BNPB dengan subjek SISMANLOGPAL. Sebagian dokumen lama mungkin memiliki keterkaitan materi atau perubahan; periksa status terakhir dan hubungan antarperaturan di JDIH sebelum digunakan.</p><div class="law-grid">
+        <article class="law-card"><h4>Perka BNPB Nomor 16 Tahun 2012</h4><p>Pedoman Pengelolaan Gudang Logistik dan Peralatan dalam Status Keadaan Darurat Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-16-tahun-2012" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><h4>Perka BNPB Nomor 21 Tahun 2011</h4><p>Pedoman Monitoring dan Evaluasi Manajemen Logistik Penanggulangan Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-21-tahun-2011" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><h4>Perka BNPB Nomor 20 Tahun 2011</h4><p>Pedoman Monitoring dan Evaluasi Manajemen Logistik Penanggulangan Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-20-tahun-2011" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><h4>Perka BNPB Nomor 19 Tahun 2010</h4><p>Pedoman Penghapusan Logistik dan Peralatan Penanggulangan Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-19-tahun-2010" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><h4>Perka BNPB Nomor 18 Tahun 2010</h4><p>Pedoman Distribusi Bantuan Logistik dan Peralatan Penanggulangan Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-18-tahun-2010" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><h4>Perka BNPB Nomor 6 Tahun 2009</h4><p>Pedoman Pergudangan.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-6-tahun-2009" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+        <article class="law-card"><h4>Perka BNPB Nomor 13 Tahun 2008</h4><p>Pedoman Manajemen Logistik dan Peralatan Penanggulangan Bencana.</p><a href="https://jdih.bnpb.go.id/dokumen/Peraturan/perka-nomor-13-tahun-2008" target="_blank" rel="noopener">Lihat entri JDIH BNPB ↗</a></article>
+      </div></div>
+      <div class="official-reference"><strong>Catatan verifikasi:</strong> Daftar ini disusun dari penelusuran JDIH BNPB, khususnya subjek Klaster Logistik, Manajemen Logistik, dan SISMANLOGPAL. Peraturan pendukung tidak seluruhnya mengatur Klaster Logistik secara khusus. Selalu periksa status, perubahan, pencabutan, dan naskah autentik pada <a href="https://jdih.bnpb.go.id/" target="_blank" rel="noopener">JDIH BNPB ↗</a> sebelum digunakan sebagai dasar keputusan atau kutipan hukum.</div>
+    </section>
+    <section id="aboutPage" class="content-page" hidden>
+      <div class="content-page-heading"><span class="eyebrow">TENTANG WEBSITE</span><h2>Tentang Website Dashboard Klaster Logistik</h2><p>Informasi mengenai tujuan, cakupan, fitur, dan sumber data yang digunakan pada website ini.</p></div>
+      <div class="about-grid">
+        <article class="about-card about-feature"><span class="content-tag">DASHBOARD INFORMASI</span><h3>Media visualisasi data Klaster Logistik</h3><p>Website ini dikembangkan sebagai media informasi untuk menyajikan ringkasan data dan visualisasi sebaran Klaster Logistik Penanggulangan Bencana di Indonesia. Pengguna dapat melihat informasi secara ringkas melalui dashboard, peta, statistik, dan daftar wilayah.</p></article>
+        <article class="about-card"><h3>Tujuan Website</h3><p>Membantu pengguna memperoleh gambaran sebaran Klaster Logistik, menelusuri informasi berdasarkan wilayah koordinator, dan mengakses referensi terkait melalui satu tampilan yang mudah digunakan.</p></article>
+        <article class="about-card"><h3>Fitur Utama</h3><ul><li>Dashboard ringkasan jumlah klaster.</li><li>Peta sebaran klaster menurut wilayah.</li><li>Filter Wilayah I, II, dan III.</li><li>Pencarian dan daftar data klaster.</li><li>Artikel, berita, dan referensi dasar hukum.</li></ul></article>
+        <article class="about-card"><h3>Sumber dan Pembaruan Data</h3><p>Data dashboard dibaca dari sumber spreadsheet yang terhubung ke aplikasi. Ketepatan informasi mengikuti kelengkapan dan waktu pembaruan sumber data tersebut. Artikel dan referensi hukum ditautkan ke publikasi BNPB serta JDIH BNPB agar pengguna dapat memeriksa sumber aslinya.</p></article>
+        <article class="about-card"><h3>Batasan Penggunaan</h3><p>Website ini merupakan media penyajian informasi dan bukan pengganti dokumen hukum, keputusan pembentukan klaster, sistem pelaporan resmi, atau kanal layanan resmi BNPB dan BPBD. Untuk kepastian informasi, pengguna perlu memeriksa sumber primer yang dicantumkan.</p></article>
+      </div>
+    </section>
+    <section id="contactPage" class="content-page" hidden>
+      <div class="content-page-heading"><span class="eyebrow">HUBUNGI KAMI</span><h2>Kontak Pengelola Platform Klaster Logistik</h2><p>Saluran untuk pertanyaan, masukan, dan informasi terkait platform Klaster Logistik.</p></div>
+      <div class="empty-content-card contact-card"><div class="empty-content-icon">✉</div><h3>Informasi kontak</h3><p>Informasi narahubung resmi akan ditampilkan pada halaman ini setelah data kontak pengelola ditetapkan.</p><p class="contact-note">Untuk sementara, gunakan kanal komunikasi resmi organisasi/pengelola yang telah Anda miliki.</p></div>
+    </section>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
