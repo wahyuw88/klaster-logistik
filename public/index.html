@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Dashboard peta dan data Klaster Logistik Indonesia. Jelajahi status pembentukan klaster logistik menurut wilayah.">
+  <meta name="theme-color" content="#102a43">
+  <title>Klaster Logistik Indonesia</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-copy">
+      <h1 class="dashboard-title">Klaster Logistik Indonesia</h1>
+      <p class="header-subtitle">Sistem Informasi dan Pemetaan Sumber Daya Logistik</p>
+    </div>
+    <nav class="main-nav" aria-label="Navigasi utama">
+      <a href="#beranda" class="main-nav-link active" data-nav="home">Beranda</a>
+      <a href="#sumber-daya" class="main-nav-link" data-nav="resources">Sumber Daya</a>
+      <a href="#artikel" class="main-nav-link" data-nav="articles">Artikel</a>
+      <a href="#tentang-kami" class="main-nav-link" data-nav="about">Tentang Kami</a>
+      <a href="#kontak" class="main-nav-link" data-nav="contact">Kontak</a>
+    </nav>
+  </header>
+
+  <main class="page">
+    <section id="dashboardPage" aria-label="Dashboard Klaster Logistik">
+    <nav class="korwil-selector" aria-label="Filter wilayah koordinator">
+      <button type="button" class="korwil-button active" data-korwil="">Semua Wilayah</button>
+      <button type="button" class="korwil-button" data-korwil="Wilayah I">Wilayah I</button>
+      <button type="button" class="korwil-button" data-korwil="Wilayah II">Wilayah II</button>
+      <button type="button" class="korwil-button" data-korwil="Wilayah III">Wilayah III</button>
+      <button id="refreshBtn" class="button-secondary korwil-refresh" type="button">↻ Muat ulang data</button>
+    </nav>
+
+    <section class="stats" id="beranda" aria-label="Ringkasan klaster logistik">
+      <article class="stat-card primary-stat"><span class="stat-label">Total Klaster Logistik</span><strong id="formedTotalCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+      <article class="stat-card"><span class="stat-label"><i class="legend-dot formed"></i> Klaster Logistik Provinsi</span><strong id="provinceClusterCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+      <article class="stat-card"><span class="stat-label"><i class="legend-dot verify"></i> Klaster Logistik Kab/Kota</span><strong id="regencyClusterCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+      <article class="stat-card"><span class="stat-label"><i class="legend-dot progress"></i> Dalam Proses</span><strong id="inProgressCount">0</strong><span class="stat-foot">&nbsp;</span></article>
+    </section>
+
+    <section class="content-grid" id="klaster">
+      <article class="panel map-panel">
+        <div class="panel-heading">
+          <div class="map-heading-title"><h3>Peta Sebaran Klaster Logistik</h3></div>
+        </div>
+        <div id="map" role="application" aria-label="Peta sebaran klaster logistik Indonesia"></div>
+        <div class="map-legend">
+          <span><i class="legend-dot formed"></i> Ada klaster terbentuk</span>
+          <span><i class="legend-dot progress"></i> Dalam proses</span>
+          <span><i class="legend-dot notformed"></i> Belum terbentuk</span>
+          <span><i class="legend-dot nodata"></i> Belum ada data</span>
+        </div>
+      </article>
+
+      <article class="panel list-panel">
+        <div class="filters">
+          <label class="search-wrap"><span aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Cari klaster atau wilayah…" autocomplete="off"></label>
+          <select id="statusFilter" aria-label="Filter status">
+            <option value="">Semua status</option>
+            <option>Terbentuk</option>
+            <option>Dalam Proses</option>
+          </select>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Klaster / Wilayah</th><th>Korwil</th><th>Status</th><th>Tahun</th></tr></thead>
+            <tbody id="clusterRows"><tr><td colspan="3" class="empty">Menghubungkan sumber data…</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section id="notice" class="notice" hidden></section>
+    </section>
+    <section id="resourcesPage" hidden>
+      <div class="resource-intro"><div><h2>Sumber Daya Logistik</h2><p>Data sumber daya anggota Klaster Logistik berdasarkan report_sumberdaya.csv.</p></div><span class="resource-source">Sumber: DATA_SUMBER_DAYA</span></div>
+      <section class="resource-stats"><article class="stat-card"><span class="stat-label">Data sumber daya</span><strong id="resourceRecordCount">0</strong></article><article class="stat-card"><span class="stat-label">Instansi terdata</span><strong id="resourceOrgCount">0</strong></article><article class="stat-card"><span class="stat-label">Kategori</span><strong id="resourceCategoryCount">0</strong></article><article class="stat-card"><span class="stat-label">Provinsi</span><strong id="resourceProvinceCount">0</strong></article></section>
+      <article class="panel resource-panel"><div class="resource-filters"><label class="search-wrap"><span>⌕</span><input id="resourceSearch" type="search" placeholder="Cari instansi, jenis, atau lokasi…" autocomplete="off"></label><select id="resourceCategoryFilter"><option value="">Semua kategori</option></select><select id="resourceProvinceFilter"><option value="">Semua provinsi</option></select></div>
+      <div class="resource-table-wrap"><table class="resource-table"><thead><tr><th>Instansi / Responden</th><th>Provinsi</th><th>Kab/Kota</th><th>Kategori</th><th>Jenis Sumber Daya</th><th>Jumlah</th><th>Satuan</th></tr></thead><tbody id="resourceRows"><tr><td colspan="7" class="empty">Memuat data sumber daya…</td></tr></tbody></table></div><div class="resource-table-footer"><span id="resourceResultCount">0 data</span><span>Data ditampilkan sesuai isi sumber.</span></div></article>
+    </section>
+    <section id="articlesPage" class="content-page" hidden>
+      <div class="content-page-heading"><span class="eyebrow">WAWASAN & PUBLIKASI</span><h2>Artikel</h2><p>Informasi dasar dan pengetahuan penyelenggaraan Klaster Logistik Penanggulangan Bencana, dirangkum dari regulasi dan publikasi resmi BNPB.</p></div>
+      <div class="article-grid">
+        <article class="article-card"><span class="article-kicker">DASAR & KONSEP</span><h3>Mengenal Klaster Logistik Penanggulangan Bencana</h3><p>Klaster Logistik merupakan wadah kolaborasi sukarela yang melibatkan instansi pemerintah, lembaga usaha, dan masyarakat untuk meningkatkan respons penanggulangan bencana pada bidang logistik.</p><a href="https://jdih.bnpb.go.id/storage/file/2025juklakbnpb016.pdf" target="_blank" rel="noopener">Baca Juklak BNPB Nomor 16 Tahun 2025 ↗</a></article>
+        <article class="article-card"><span class="article-kicker">TATA KELOLA</span><h3>Bagaimana Klaster Logistik Dikoordinasikan?</h3><p>Di tingkat nasional, koordinator Klaster Logistik dijabat oleh Deputi Bidang Logistik dan Peralatan BNPB. Klaster Logistik daerah dibentuk oleh pemerintah daerah sesuai kewenangannya dan struktur dapat disesuaikan dengan kebutuhan.</p><a href="https://jdih.bnpb.go.id/dokumen/juklak-nomor-16-tahun-2025" target="_blank" rel="noopener">Lihat dokumen resmi di JDIH BNPB ↗</a></article>
+        <article class="article-card"><span class="article-kicker">SIKLUS PENANGGULANGAN</span><h3>Peran Logistik pada Tahap Pra, Saat, dan Pascabencana</h3><p>Penyelenggaraan Klaster Logistik mencakup kesiapsiagaan dan peningkatan kapasitas sebelum bencana, dukungan teknis-operasional saat tanggap darurat, serta evaluasi dan dukungan pemulihan setelah bencana.</p><a href="https://jdih.bnpb.go.id/storage/file/2025juklakbnpb016.pdf" target="_blank" rel="noopener">Pelajari pedoman penyelenggaraan ↗</a></article>
+        <article class="article-card"><span class="article-kicker">SUMBER DAYA</span><h3>Pemetaan Kapasitas untuk Mendukung Respons Logistik</h3><p>Pemetaan sumber daya membantu mengenali kapasitas logistik dan peralatan, sarana transportasi, fasilitas penyimpanan, serta personel pendukung yang dapat dikoordinasikan sesuai kebutuhan dan kapasitas anggota.</p><a href="https://inalogpal.bnpb.go.id/" target="_blank" rel="noopener">Lihat platform InaLogpal BNPB ↗</a></article>
+      </div>
+      <p class="article-disclaimer">Artikel pada halaman ini merupakan ringkasan informasi dari dokumen resmi, bukan pengumuman atau berita kegiatan terbaru. Untuk ketentuan lengkap, gunakan dokumen sumber yang ditautkan.</p>
+    </section>
+    <section id="aboutPage" class="content-page" hidden>
+      <div class="content-page-heading"><span class="eyebrow">PROFIL & INFORMASI</span><h2>Tentang Kami</h2><p>Mengenal Klaster Logistik Penanggulangan Bencana dan fungsi website informasi ini.</p></div>
+      <div class="about-grid">
+        <article class="about-card about-feature"><span class="content-tag">KLASTER LOGISTIK PENANGGULANGAN BENCANA</span><h3>Kolaborasi multipihak untuk dukungan logistik kebencanaan</h3><p>Menurut Petunjuk Pelaksanaan BNPB Nomor 16 Tahun 2025, Klaster Logistik adalah wadah sekumpulan organisasi dari unsur instansi pemerintah, lembaga usaha, dan masyarakat yang bekerja bersama secara sukarela untuk meningkatkan respons penanggulangan bencana di bidang logistik.</p><p>Penyelenggaraannya diarahkan agar koordinasi dan kolaborasi berjalan terpadu, efektif, dan akuntabel. Klaster Logistik terdiri atas Klaster Logistik Nasional dan Klaster Logistik Daerah.</p></article>
+        <article class="about-card"><h3>Pengorganisasian</h3><ul><li><strong>Tingkat nasional:</strong> Koordinator dijabat Deputi Bidang Logistik dan Peralatan BNPB.</li><li><strong>Tingkat daerah:</strong> dibentuk oleh pemerintah daerah sesuai kewenangannya.</li><li><strong>Unsur kerja:</strong> koordinasi, sekretariat, perencanaan dan pemenuhan kebutuhan, penyimpanan, serta pendistribusian.</li></ul></article>
+        <article class="about-card"><h3>Fokus Penyelenggaraan</h3><ul><li>Koordinasi, kolaborasi, dan sinergi anggota serta mitra.</li><li>Peningkatan kapasitas sumber daya manusia.</li><li>Pemetaan dan pemutakhiran sumber daya logistik dan peralatan.</li><li>Dukungan perencanaan, pergudangan, transportasi, dan distribusi saat darurat.</li><li>Pelaporan, evaluasi, dan pembelajaran pascabencana.</li></ul></article>
+        <article class="about-card"><h3>Tentang Website Ini</h3><p>Website ini merupakan media informasi dan visualisasi data Klaster Logistik yang menampilkan ringkasan sebaran klaster dan data sumber daya yang tersedia pada sistem. Informasi ditampilkan untuk membantu pengguna menelusuri data berdasarkan wilayah dan kategori.</p><p>Website ini tidak menggantikan regulasi, keputusan pembentukan klaster, maupun kanal resmi BNPB dan BPBD. Data yang ditampilkan perlu merujuk pada sumber dan waktu pemutakhiran masing-masing.</p><a href="https://inalogpal.bnpb.go.id/sadd/tentang" target="_blank" rel="noopener">Informasi resmi InaLogpal ↗</a></article>
+      </div>
+      <div class="official-reference"><strong>Dasar informasi:</strong> Petunjuk Pelaksanaan Penyelenggaraan Klaster Logistik Penanggulangan Bencana Nomor 16 Tahun 2025 dan Peraturan BNPB Nomor 6 Tahun 2022 tentang Klaster Logistik Penanggulangan Bencana. <a href="https://jdih.bnpb.go.id/dokumen/juklak-nomor-16-tahun-2025" target="_blank" rel="noopener">JDIH BNPB ↗</a></div>
+    </section>
+    <section id="contactPage" class="content-page" hidden>
+      <div class="content-page-heading"><span class="eyebrow">HUBUNGI KAMI</span><h2>Kontak</h2><p>Saluran untuk pertanyaan, masukan, dan informasi terkait platform Klaster Logistik.</p></div>
+      <div class="empty-content-card contact-card"><div class="empty-content-icon">✉</div><h3>Informasi kontak</h3><p>Informasi narahubung resmi akan ditampilkan pada halaman ini setelah data kontak pengelola ditetapkan.</p><p class="contact-note">Untuk sementara, gunakan kanal komunikasi resmi organisasi/pengelola yang telah Anda miliki.</p></div>
+    </section>
+  </main>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
