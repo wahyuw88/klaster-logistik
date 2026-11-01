@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://klaster-logistik.vercel.app/sitemap.xml
